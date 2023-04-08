@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-void main() {
+// https://inappwebview.dev/docs/5.x.x/intro#:~:text=Future main() async {
+Future main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Permission.camera.request();
+  await Permission.microphone.request(); // if you need microphone permission
+
   runApp(const MyApp());
 }
 
