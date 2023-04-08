@@ -92,7 +92,8 @@ class _MyAppState extends State<MyApp> {
                 InAppWebView(
                   key: webViewKey,
                   initialUrlRequest:
-                      URLRequest(url: Uri.parse("https://inappwebview.dev/")),
+                      URLRequest(
+                      url: Uri.parse("https://webcammictest.com/")),
                   initialOptions: options,
                   pullToRefreshController: pullToRefreshController,
                   onWebViewCreated: (controller) {
