@@ -47,5 +47,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Flutter requires acess to microphone.</string>
+
+  <key>NSCameraUsageDescription</key>
+  <string>Flutter requires acess to camera.</string>
 </dict>
 </plist>
