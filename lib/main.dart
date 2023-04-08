@@ -1,20 +1,24 @@
-import 'dart:io';
+import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// https://inappwebview.dev/docs/5.x.x/intro#:~:text=Future main() async {
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Permission.camera.request();
   await Permission.microphone.request(); // if you need microphone permission
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    await InAppWebViewController.setWebContentsDebuggingEnabled(true);
+  }
 
   runApp(const MaterialApp(home: MyApp()));
 }
 
-// https://inappwebview.dev/docs/5.x.x/webview/in-app-webview#:~:text=Example:
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -23,23 +27,17 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-
   final GlobalKey webViewKey = GlobalKey();
 
   InAppWebViewController? webViewController;
-  InAppWebViewGroupOptions options = InAppWebViewGroupOptions(
-      crossPlatform: InAppWebViewOptions(
-        useShouldOverrideUrlLoading: true,
-        mediaPlaybackRequiresUserGesture: false,
-      ),
-      android: AndroidInAppWebViewOptions(
-        useHybridComposition: true,
-      ),
-      ios: IOSInAppWebViewOptions(
-        allowsInlineMediaPlayback: true,
-      ));
+  InAppWebViewSettings settings = InAppWebViewSettings(
+      useShouldOverrideUrlLoading: true,
+      mediaPlaybackRequiresUserGesture: false,
+      allowsInlineMediaPlayback: true,
+      iframeAllow: "camera; microphone",
+      iframeAllowFullscreen: true);
 
-  late PullToRefreshController pullToRefreshController;
+  PullToRefreshController? pullToRefreshController;
   String url = "";
   double progress = 0;
   final urlController = TextEditingController();
@@ -48,24 +46,21 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    pullToRefreshController = PullToRefreshController(
-      options: PullToRefreshOptions(
+    pullToRefreshController = kIsWeb
+        ? null
+        : PullToRefreshController(
+            settings: PullToRefreshSettings(
         color: Colors.blue,
       ),
       onRefresh: () async {
-        if (Platform.isAndroid) {
+              if (defaultTargetPlatform == TargetPlatform.android) {
           webViewController?.reload();
-        } else if (Platform.isIOS) {
+              } else if (defaultTargetPlatform == TargetPlatform.iOS) {
           webViewController?.loadUrl(
               urlRequest: URLRequest(url: await webViewController?.getUrl()));
         }
       },
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   @override
@@ -79,9 +74,9 @@ class _MyAppState extends State<MyApp> {
             controller: urlController,
             keyboardType: TextInputType.url,
             onSubmitted: (value) {
-              var url = Uri.parse(value);
+              var url = WebUri(value);
               if (url.scheme.isEmpty) {
-                url = Uri.parse("https://www.google.com/search?q=$value");
+                url = WebUri("https://www.google.com/search?q=$value");
               }
               webViewController?.loadUrl(urlRequest: URLRequest(url: url));
             },
@@ -92,9 +87,8 @@ class _MyAppState extends State<MyApp> {
                 InAppWebView(
                   key: webViewKey,
                   initialUrlRequest:
-                      URLRequest(
-                      url: Uri.parse("https://webcammictest.com/")),
-                  initialOptions: options,
+                      URLRequest(url: WebUri("https://webcammictest.com/")),
+                  initialSettings: settings,
                   pullToRefreshController: pullToRefreshController,
                   onWebViewCreated: (controller) {
                     webViewController = controller;
@@ -105,11 +99,10 @@ class _MyAppState extends State<MyApp> {
                       urlController.text = this.url;
                     });
                   },
-                  androidOnPermissionRequest:
-                      (controller, origin, resources) async {
-                    return PermissionRequestResponse(
-                        resources: resources,
-                        action: PermissionRequestResponseAction.GRANT);
+                  onPermissionRequest: (controller, request) async {
+                    return PermissionResponse(
+                        resources: request.resources,
+                        action: PermissionResponseAction.GRANT);
                   },
                   shouldOverrideUrlLoading:
                       (controller, navigationAction) async {
@@ -124,10 +117,10 @@ class _MyAppState extends State<MyApp> {
                       "javascript",
                       "about"
                     ].contains(uri.scheme)) {
-                      if (await canLaunch(url)) {
+                      if (await canLaunchUrl(uri)) {
                         // Launch the App
-                        await launch(
-                          url,
+                        await launchUrl(
+                          uri,
                         );
                         // and cancel the request
                         return NavigationActionPolicy.CANCEL;
@@ -137,18 +130,18 @@ class _MyAppState extends State<MyApp> {
                     return NavigationActionPolicy.ALLOW;
                   },
                   onLoadStop: (controller, url) async {
-                    pullToRefreshController.endRefreshing();
+                    pullToRefreshController?.endRefreshing();
                     setState(() {
                       this.url = url.toString();
                       urlController.text = this.url;
                     });
                   },
-                  onLoadError: (controller, url, code, message) {
-                    pullToRefreshController.endRefreshing();
+                  onReceivedError: (controller, request, error) {
+                    pullToRefreshController?.endRefreshing();
                   },
                   onProgressChanged: (controller, progress) {
                     if (progress == 100) {
-                      pullToRefreshController.endRefreshing();
+                      pullToRefreshController?.endRefreshing();
                     }
                     setState(() {
                       this.progress = progress / 100;
@@ -194,7 +187,6 @@ class _MyAppState extends State<MyApp> {
               ),
             ],
           ),
-        ]))
-    );
+        ])));
   }
 }
