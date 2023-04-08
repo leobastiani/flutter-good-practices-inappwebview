@@ -23,7 +23,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-
   final GlobalKey webViewKey = GlobalKey();
 
   InAppWebViewController? webViewController;
@@ -42,6 +41,7 @@ class _MyAppState extends State<MyApp> {
   late PullToRefreshController pullToRefreshController;
   String url = "";
   double progress = 0;
+  bool isButtonsVisible = true;
   final urlController = TextEditingController();
 
   @override
@@ -71,28 +71,30 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(title: const Text("Official InAppWebView website")),
-        body: SafeArea(
-            child: Column(children: <Widget>[
-          TextField(
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
-            controller: urlController,
-            keyboardType: TextInputType.url,
-            onSubmitted: (value) {
-              var url = Uri.parse(value);
-              if (url.scheme.isEmpty) {
-                url = Uri.parse("https://www.google.com/search?q=$value");
-              }
-              webViewController?.loadUrl(urlRequest: URLRequest(url: url));
-            },
-          ),
+        appBar: isButtonsVisible
+            ? AppBar(title: const Text("Official InAppWebView website"))
+            : null,
+        body: Column(children: <Widget>[
+          if (isButtonsVisible)
+            TextField(
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
+              controller: urlController,
+              keyboardType: TextInputType.url,
+              onSubmitted: (value) {
+                var url = Uri.parse(value);
+                if (url.scheme.isEmpty) {
+                  url = Uri.parse("https://www.google.com/search?q=$value");
+                }
+                webViewController?.loadUrl(urlRequest: URLRequest(url: url));
+              },
+            ),
           Expanded(
             child: Stack(
               children: [
                 InAppWebView(
                   key: webViewKey,
                   initialUrlRequest:
-                      URLRequest(url: Uri.parse("https://inappwebview.dev/")),
+                      URLRequest(url: Uri.parse("https://brie.fi/ng")),
                   initialOptions: options,
                   pullToRefreshController: pullToRefreshController,
                   onWebViewCreated: (controller) {
@@ -170,30 +172,38 @@ class _MyAppState extends State<MyApp> {
               ],
             ),
           ),
-          ButtonBar(
-            alignment: MainAxisAlignment.center,
-            children: <Widget>[
-              ElevatedButton(
-                child: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  webViewController?.goBack();
-                },
-              ),
-              ElevatedButton(
-                child: const Icon(Icons.arrow_forward),
-                onPressed: () {
-                  webViewController?.goForward();
-                },
-              ),
-              ElevatedButton(
-                child: const Icon(Icons.refresh),
-                onPressed: () {
-                  webViewController?.reload();
-                },
-              ),
-            ],
-          ),
-        ]))
-    );
+          if (isButtonsVisible)
+            ButtonBar(
+              alignment: MainAxisAlignment.center,
+              children: <Widget>[
+                ElevatedButton(
+                  child: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    webViewController?.goBack();
+                  },
+                ),
+                ElevatedButton(
+                  child: const Icon(Icons.arrow_forward),
+                  onPressed: () {
+                    webViewController?.goForward();
+                  },
+                ),
+                ElevatedButton(
+                  child: const Icon(Icons.refresh),
+                  onPressed: () {
+                    webViewController?.reload();
+                  },
+                ),
+                ElevatedButton(
+                  child: const Icon(Icons.visibility_off),
+                  onPressed: () {
+                    setState(() {
+                      isButtonsVisible = false;
+                    });
+                  },
+                ),
+              ],
+            ),
+        ]));
   }
 }
